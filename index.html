@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smash Fighters Online</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ── Lobby ── -->
+  <div id="lobby-screen" class="screen active">
+    <h1>Smash Fighters</h1>
+
+    <div id="menu">
+      <button id="host-btn">Host Game</button>
+      <button id="join-btn">Join Game</button>
+    </div>
+
+    <div id="host-panel" class="hidden">
+      <p style="color:#aaa;font-size:.9rem">Your Room Code</p>
+      <span id="room-code">...</span>
+      <p id="player-count" style="color:#aaa;font-size:.9rem">Players: 1 / 4</p>
+      <div id="player-list"></div>
+      <button id="start-game-btn" disabled>Go to Character Select</button>
+    </div>
+
+    <div id="join-panel" class="hidden">
+      <input type="text" id="room-input" placeholder="ROOM CODE" maxlength="8" autocomplete="off">
+      <button id="connect-btn">Connect</button>
+    </div>
+
+    <div id="status-msg"></div>
+
+    <div style="margin-top:24px;color:rgba(255,255,255,0.25);font-size:.8rem;font-family:monospace;line-height:1.8;text-align:center">
+      WASD — Move &amp; Jump &nbsp;|&nbsp; J — Normal Attack &nbsp;|&nbsp; K — Special Attack<br>
+      S (in air) — Fast Fall &nbsp;|&nbsp; S (on platform) — Drop Through &nbsp;|&nbsp; ESC — Quit
+    </div>
+  </div>
+
+  <!-- ── Character Select ── -->
+  <div id="char-select-screen" class="screen hidden">
+    <h2>Select Your Fighter</h2>
+    <div id="character-grid"></div>
+    <div id="selected-chars"></div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <button id="ready-btn">Ready!</button>
+      <span style="font-size:.8rem;color:#888" id="waiting-msg"></span>
+    </div>
+  </div>
+
+  <!-- ── Game ── -->
+  <div id="game-screen" class="screen hidden">
+    <div id="hud"></div>
+    <canvas id="game-canvas" width="880" height="620"></canvas>
+    <div class="controls-hint">
+      WASD: Move/Jump &nbsp; J: Attack &nbsp; K: Special<br>
+      ESC: Exit
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div id="results-screen" class="screen hidden">
+    <h2 id="winner-text">Player Wins!</h2>
+    <div>
+      <button id="rematch-btn">Rematch</button>
+      <button id="menu-btn">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- PeerJS for online multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+  <!-- Game files — order matters -->
+  <script src="js/characters.js"></script>
+  <script src="js/stage.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
