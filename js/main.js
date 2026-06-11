@@ -184,6 +184,7 @@ const App = (() => {
     }));
 
     game = new Game(canvas, playerSetup, stage || DEFAULT_STAGE, isHost, localPlayerId);
+    window.game = game; // expose for debugging / testing
 
     game.onGameOver = (winner) => {
       setTimeout(() => showResults(winner), 1500);

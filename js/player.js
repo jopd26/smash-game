@@ -401,7 +401,7 @@ class Player {
       this.particles.push({
         x: this.x, y: this.y - 30,
         vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 1,
-        life: 20 + Math.random() * 10,
+        life: Math.floor(20 + Math.random() * 10),
         maxLife: 30,
         col, size: 3 + Math.random() * 3,
       });

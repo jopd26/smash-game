@@ -391,7 +391,7 @@ class Renderer {
       ctx.globalAlpha = alpha;
       ctx.fillStyle = part.col;
       ctx.beginPath();
-      ctx.arc(part.x, part.y, part.size * alpha, 0, Math.PI * 2);
+      ctx.arc(part.x, part.y, Math.max(0, part.size * alpha), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -423,7 +423,7 @@ class Renderer {
       ctx.globalAlpha = alpha;
       ctx.fillStyle = p.col;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (0.5 + alpha * 0.5), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.max(0, p.size * (0.5 + alpha * 0.5)), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }

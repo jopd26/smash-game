@@ -4,11 +4,15 @@ class InputManager {
     this.prevKeys = {};
     this.attackBuffer = null;
     this.attackBufferTimer = 0;
-    this.smashThreshold = 8; // velocity for smash input
-    this.prevX = 0;
     this.smashCooldown = 0;
+    // Track fresh key presses between frames (not cleared by keyup)
+    this._freshSet = new Set();
+    this._freshSnap = new Set();
     window.addEventListener('keydown', e => {
-      if (!this.keys[e.code]) this.onKeyDown(e.code);
+      if (!this.keys[e.code]) {
+        this._freshSet.add(e.code);
+        this.onKeyDown(e.code);
+      }
       this.keys[e.code] = true;
     });
     window.addEventListener('keyup', e => {
@@ -27,6 +31,9 @@ class InputManager {
   }
 
   update() {
+    // Snapshot keys pressed since last frame, then clear accumulator
+    this._freshSnap = this._freshSet;
+    this._freshSet = new Set();
     this.prevKeys = { ...this.keys };
     if (this.attackBufferTimer > 0) this.attackBufferTimer--;
     if (this.attackBufferTimer === 0) this.attackBuffer = null;
@@ -47,7 +54,7 @@ class InputManager {
   get jump() { return this.keys['KeyW'] || this.keys['Space'] || this.keys['ArrowUp']; }
 
   justPressed(code) {
-    return this.keys[code] && !this.prevKeys[code];
+    return this._freshSnap.has(code);
   }
 
   getStick() {
@@ -60,20 +67,13 @@ class InputManager {
   }
 
   isSmashInput(axis) {
-    // Smash input: quick direction tap
+    // Smash = direction key freshly pressed this frame
     if (axis === 'x') {
-      const cur = (this.keys['KeyD'] || this.keys['ArrowRight']) ? 1 :
-                  (this.keys['KeyA'] || this.keys['ArrowLeft']) ? -1 : 0;
-      const prev = (this.prevKeys['KeyD'] || this.prevKeys['ArrowRight']) ? 1 :
-                   (this.prevKeys['KeyA'] || this.prevKeys['ArrowLeft']) ? -1 : 0;
-      return cur !== 0 && prev === 0 && this.smashCooldown === 0;
+      return (this._freshSnap.has('KeyD') || this._freshSnap.has('ArrowRight') ||
+              this._freshSnap.has('KeyA') || this._freshSnap.has('ArrowLeft')) && this.smashCooldown === 0;
     }
-    if (axis === 'up') {
-      return (this.keys['KeyW'] || this.keys['ArrowUp']) && !(this.prevKeys['KeyW'] || this.prevKeys['ArrowUp']);
-    }
-    if (axis === 'down') {
-      return (this.keys['KeyS'] || this.keys['ArrowDown']) && !(this.prevKeys['KeyS'] || this.prevKeys['ArrowDown']);
-    }
+    if (axis === 'up') return this._freshSnap.has('KeyW') || this._freshSnap.has('ArrowUp');
+    if (axis === 'down') return this._freshSnap.has('KeyS') || this._freshSnap.has('ArrowDown');
     return false;
   }
 
@@ -83,13 +83,12 @@ class InputManager {
       jump: !!this.jump,
       attackBuffer: this.attackBuffer,
       keys: { ...this.keys },
-      prevKeys: { ...this.prevKeys },
+      freshKeys: [...this._freshSnap],
     };
   }
 
   applyState(state) {
     this.keys = state.keys || {};
-    this.prevKeys = state.prevKeys || {};
     this.attackBuffer = state.attackBuffer || null;
   }
 }
@@ -97,12 +96,13 @@ class InputManager {
 // Remote player input (controlled over network)
 class RemoteInput {
   constructor() {
-    this.state = { left:false, right:false, up:false, down:false, jump:false, attackBuffer:null, keys:{}, prevKeys:{} };
+    this.state = { left:false, right:false, up:false, down:false, jump:false, attackBuffer:null, keys:{}, freshKeys:[] };
     this._buffer = null;
+    this._freshSnap = new Set();
   }
   update() {
-    this.prevKeys = { ...this.state.keys };
     if (this._buffer) { this.state = this._buffer; this._buffer = null; }
+    this._freshSnap = new Set(this.state.freshKeys || []);
   }
   pushState(state) { this._buffer = state; }
   get left() { return this.state.left; }
@@ -111,7 +111,7 @@ class RemoteInput {
   get down() { return this.state.down; }
   get jump() { return this.state.jump; }
   get attackBuffer() { return this.state.attackBuffer; }
-  justPressed(code) { return this.state.keys[code] && !this.prevKeys[code]; }
+  justPressed(code) { return this._freshSnap.has(code); }
   consumeAttackBuffer() {
     const b = this.state.attackBuffer;
     this.state.attackBuffer = null;
@@ -124,13 +124,9 @@ class RemoteInput {
     };
   }
   isSmashInput(axis) {
-    if (axis === 'x') {
-      const cur = this.state.keys['KeyD'] ? 1 : this.state.keys['KeyA'] ? -1 : 0;
-      const prev = (this.prevKeys || {})['KeyD'] ? 1 : (this.prevKeys || {})['KeyA'] ? -1 : 0;
-      return cur !== 0 && prev === 0;
-    }
-    if (axis === 'up') return this.state.keys['KeyW'] && !(this.prevKeys || {})['KeyW'];
-    if (axis === 'down') return this.state.keys['KeyS'] && !(this.prevKeys || {})['KeyS'];
+    if (axis === 'x') return this._freshSnap.has('KeyD') || this._freshSnap.has('KeyA') || this._freshSnap.has('ArrowLeft') || this._freshSnap.has('ArrowRight');
+    if (axis === 'up') return this._freshSnap.has('KeyW') || this._freshSnap.has('ArrowUp');
+    if (axis === 'down') return this._freshSnap.has('KeyS') || this._freshSnap.has('ArrowDown');
     return false;
   }
   getState() { return this.state; }
