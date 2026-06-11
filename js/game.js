@@ -9,6 +9,7 @@ class Game {
     this.running = false;
     this.frame = 0;
     this.winner = null;
+    this.victoryFrame = 0;
     this.onGameOver = null;
 
     this.projectiles = [];
@@ -52,7 +53,21 @@ class Game {
 
   _update() {
     this.frame++;
-    if (this.winner) return;
+
+    // Victory sequence — keep particles going, spawn confetti, then show results
+    if (this.winner) {
+      this.victoryFrame++;
+      for (const p of this.players) p.updateParticles();
+      if (this.victoryFrame === 1) {
+        this.renderer.spawnConfetti();
+        this.renderer.shake(8);
+        this.renderer.flashAlpha = 0.85;
+      }
+      if (this.victoryFrame === 240 && this.onGameOver) {
+        this.onGameOver(this.winner);
+      }
+      return;
+    }
 
     // Update projectiles
     this.projectiles = this.projectiles.filter(p => !p.dead);
@@ -71,10 +86,8 @@ class Game {
     const alive = this.players.filter(p => p.stocks > 0);
     if (alive.length === 1 && this.players.length > 1) {
       this.winner = alive[0];
-      if (this.onGameOver) this.onGameOver(this.winner);
     } else if (alive.length === 0) {
-      this.winner = { id: -1, charKey: 'none' };
-      if (this.onGameOver) this.onGameOver(this.winner);
+      this.winner = { id: -1, charKey: 'none', charData: null };
     }
   }
 
@@ -84,15 +97,19 @@ class Game {
       stage: this.stage,
       players: this.players,
       projectiles: this.projectiles,
+      frame: this.frame,
     });
     this._renderHUD();
+    // Victory overlay drawn last — on top of HUD
+    if (this.winner && this.victoryFrame > 0) {
+      this.renderer.drawVictoryOverlay(this.winner, this.victoryFrame);
+    }
   }
 
   _renderHUD() {
     const ctx = this.renderer.ctx;
     const W = this.renderer.W;
 
-    // Player stock + damage panels at top
     const panelW = 160, panelH = 54, gap = 16;
     const totalW = this.players.length * panelW + (this.players.length - 1) * gap;
     let startX = (W - totalW) / 2;
@@ -102,26 +119,22 @@ class Game {
       startX += panelW + gap;
 
       ctx.save();
-      // Panel background
       const alpha = p.state === 'dead' ? 0.3 : 0.75;
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.beginPath();
       ctx.roundRect(px, 8, panelW, panelH, 8);
       ctx.fill();
 
-      // Color accent bar
       ctx.fillStyle = p.charData.color;
       ctx.beginPath();
       ctx.roundRect(px, 8, panelW, 4, [8, 8, 0, 0]);
       ctx.fill();
 
-      // Character name
       ctx.fillStyle = p.state === 'dead' ? '#888' : '#fff';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`P${p.id + 1} ${p.charData.name}`, px + 8, 28);
 
-      // Damage %
       const pct = Math.floor(p.damage);
       const dr = Math.min(255, pct * 2.5);
       const dg = Math.max(0, 255 - pct * 2.5);
@@ -129,23 +142,21 @@ class Game {
       ctx.fillStyle = `rgb(${Math.round(dr)},${Math.round(dg)},50)`;
       ctx.fillText(`${pct}%`, px + 8, 50);
 
-      // Stocks (hearts/icons)
       const totalStocks = 3;
       for (let s = 0; s < totalStocks; s++) {
-        const alive = s < p.stocks;
+        const isAlive = s < p.stocks;
         const sx = px + panelW - 16 - s * 22;
         ctx.beginPath();
         ctx.arc(sx, 36, 8, 0, Math.PI * 2);
-        ctx.fillStyle = alive ? p.charData.color : 'rgba(100,100,100,0.5)';
+        ctx.fillStyle = isAlive ? p.charData.color : 'rgba(100,100,100,0.5)';
         ctx.fill();
-        if (alive) {
+        if (isAlive) {
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 1.5;
           ctx.stroke();
         }
       }
 
-      // Player label (local/cpu)
       if (p.id === this.localPlayerId) {
         ctx.fillStyle = '#00ff88';
         ctx.font = '9px sans-serif';
@@ -154,15 +165,8 @@ class Game {
       }
       ctx.restore();
     }
-
-    // Frame counter (small, for debugging)
-    // ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    // ctx.font = '10px monospace';
-    // ctx.textAlign = 'right';
-    // ctx.fillText(`F:${this.frame}`, W - 8, 20);
   }
 
-  // For network: serialize authoritative state
   serializeState() {
     return {
       frame: this.frame,
@@ -171,7 +175,6 @@ class Game {
     };
   }
 
-  // For clients: apply received state
   applyState(state) {
     for (const ps of state.players) {
       const p = this.players[ps.id];
@@ -179,7 +182,6 @@ class Game {
     }
   }
 
-  // Push remote input for a specific player
   pushRemoteInput(playerId, inputState) {
     const p = this.players[playerId];
     if (p && p.input instanceof RemoteInput) {

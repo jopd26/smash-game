@@ -187,7 +187,7 @@ const App = (() => {
     window.game = game; // expose for debugging / testing
 
     game.onGameOver = (winner) => {
-      setTimeout(() => showResults(winner), 1500);
+      showResults(winner);
     };
 
     if (net && isHost) {

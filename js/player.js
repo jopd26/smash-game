@@ -205,7 +205,7 @@ class Player {
         }
       }
     } else if (type === 'special') {
-      if (stick.y < -0.3) atkName = 'uspecial';
+      if (!this.onGround && stick.y < -0.3) atkName = 'uspecial'; // recovery move — air only
       else if (stick.y > 0.3) atkName = 'dspecial';
       else if (stick.x !== 0) { atkName = 'sspecial'; this.facing = stick.x > 0 ? 1 : -1; }
       else atkName = 'nspecial';
